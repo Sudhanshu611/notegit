@@ -33,6 +33,15 @@ const PORT = process.env.PORT || 3001
 app.use(cors({ origin: 'http://localhost:5173' }))
 app.use(express.json())
 
+// Path restoration middleware for Vercel serverless routing
+app.use((req, res, next) => {
+  if (req.query && req.query.path) {
+    const originalQueryString = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''
+    req.url = '/' + req.query.path + originalQueryString
+  }
+  next()
+})
+
 // Diagnostic endpoints to inspect Vercel routing headers
 app.get('/api/debug', (req, res) => {
   res.json({
