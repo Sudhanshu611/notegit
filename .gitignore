@@ -33,3 +33,5 @@ npm-debug.log*
 # NoteGit internal build tools / guides
 stitch_file_to_ui_generator
 codegen_guide.md
+.vercel
+.env*
