@@ -2,6 +2,10 @@
   "name": "notegit",
   "version": "1.0.0",
   "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
   "scripts": {
     "dev": "concurrently \"node backend/server.js\" \"npm --prefix frontend run dev\"",
     "build": "npm --prefix frontend run build"

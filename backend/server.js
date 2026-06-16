@@ -36,11 +36,16 @@ app.use(express.json())
 // Initialize local storage directory
 await StorageEngine.init()
 
-// API routing mount
-app.use('/api/notes',    notesRouter)
-app.use('/api/commits',  commitsRouter)
-app.use('/api/branches', branchesRouter)
-app.use('/api/ai',       aiRouter)
+// API routing mount (Dual-mount for local and serverless Vercel compatibility)
+const mountApi = (pathName, router) => {
+  app.use(`/api${pathName}`, router)
+  app.use(pathName, router)
+}
+
+mountApi('/notes',    notesRouter)
+mountApi('/commits',  commitsRouter)
+mountApi('/branches', branchesRouter)
+mountApi('/ai',       aiRouter)
 
 // Serve production build static files if present
 const distPath = path.join(__dirname, '../frontend/dist')
