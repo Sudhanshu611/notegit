@@ -1,0 +1,107 @@
+:root {
+  --bg-base:       #0E0F11;
+  --bg-surface:    #16181C;
+  --bg-card:       #1E2027;
+  --bg-hover:      #252830;
+  --border:        #2E3139;
+  --text-primary:  #E8E9EC;
+  --text-secondary:#8B8FA8;
+  --text-muted:    #4A4E62;
+  --accent-green:  #3DDC84;
+  --accent-blue:   #5B8DEF;
+  --accent-amber:  #F5A623;
+  --accent-red:    #E05C5C;
+  --accent-purple: #A78BFA;
+  --vis-node:      #252830;
+  --vis-edge:      #3DDC84;
+
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-ui:   'Inter', sans-serif;
+
+  --radius-sm:  4px;
+  --radius-md:  8px;
+  --radius-lg:  16px;
+}
+
+body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  margin: 0;
+  overflow: hidden;
+}
+
+/* Custom scrollbars */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: var(--radius-sm);
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Blinking cursor for technical editor view */
+.cursor-blink {
+  animation: blink 1s step-end infinite;
+  border-right: 2px solid var(--accent-green);
+}
+@keyframes blink {
+  from, to { border-color: transparent; }
+  50% { border-color: var(--accent-green); }
+}
+
+/* Hide scrollbar helper class */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Material Symbols customization */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  font-size: 20px;
+  user-select: none;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* Node/Edge animation keys */
+@keyframes slide-in-right {
+  from {
+    transform: translateX(40px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in-right 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes pulse-purple {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(167, 139, 250, 0.4);
+  }
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 0 8px 4px rgba(167, 139, 250, 0.2);
+  }
+}
+
+.animate-pulse-purple {
+  animation: pulse-purple 0.6s ease-in-out;
+}
