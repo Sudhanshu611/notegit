@@ -2,7 +2,7 @@
 import axios from 'axios'
 
 const client = axios.create({
-  baseURL: 'http://localhost:3001/api',
+  baseURL: import.meta.env.PROD ? '/api' : 'http://localhost:3001/api',
   headers: {
     'Content-Type': 'application/json'
   }

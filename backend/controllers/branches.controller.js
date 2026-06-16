@@ -72,9 +72,11 @@ export async function switchBranch(req, res) {
     meta.currentBranch = name
     await StorageEngine.saveNoteMeta(noteId, meta)
 
-    // Fetch the note content at this HEAD hash
+    // Fetch the note content at this HEAD hash or pending merge conflict content if exists
     let content = ''
-    if (headHash) {
+    if (meta.pendingMerge && meta.pendingMerge.targetBranch === name && meta.pendingMerge.conflictContent) {
+      content = meta.pendingMerge.conflictContent
+    } else if (headHash) {
       const commitNode = list.findByHash(headHash)
       if (commitNode) content = commitNode.content
     }
@@ -119,6 +121,17 @@ export async function mergeBranches(req, res) {
     )
 
     if (hasConflicts) {
+      const meta = await StorageEngine.getNote(noteId)
+      if (meta) {
+        meta.pendingMerge = {
+          sourceBranch,
+          sourceHash: sourceHead,
+          targetBranch: target,
+          conflictContent: mergedContent
+        }
+        await StorageEngine.saveNoteMeta(noteId, meta)
+      }
+
       // Return the content containing conflicts so the user can resolve them in the editor
       return res.json({
         success: false,
@@ -140,7 +153,8 @@ export async function mergeBranches(req, res) {
       hash: mergeHash,
       message: commitMessage,
       content: mergedContent,
-      parent: targetHead, // In our simplified LinkedList we point next to targetHead
+      parent: targetHead,
+      parents: [targetHead, sourceHead],
       timestamp: Date.now()
     }
 

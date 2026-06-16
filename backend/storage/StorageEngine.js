@@ -3,7 +3,10 @@ import fs   from 'fs-extra'
 import path from 'path'
 import os   from 'os'
 
-const ROOT = path.join(os.homedir(), '.notegit')
+const isVercel = process.env.VERCEL === '1' || !!process.env.VERCEL
+const ROOT = isVercel 
+  ? path.join('/tmp', '.notegit')
+  : path.join(os.homedir(), '.notegit')
 
 export const StorageEngine = {
   // Creates ~/.notegit/ and index.json if they don't exist
@@ -66,6 +69,9 @@ export const StorageEngine = {
       const branch = meta.currentBranch ?? 'main'
       meta.branches = meta.branches ?? {}
       meta.branches[branch] = commit.hash
+      if (meta.pendingMerge) {
+        delete meta.pendingMerge
+      }
       await fs.writeJSON(path.join(ROOT, 'notes', noteId, 'meta.json'), meta)
     }
   },

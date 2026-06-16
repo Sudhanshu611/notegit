@@ -49,10 +49,13 @@ export default function NoteCard({ note, isActive, onSelect }) {
     e.stopPropagation()
     setMenuOpen(false)
     const bName = prompt('Enter new branch name (lowercase, kebab-case):')
-    if (bName) {
-      // Switch to active note first then branch
-      await onSelect(note.id)
-      await createBranch(bName.trim().toLowerCase())
+    if (bName && bName.trim()) {
+      try {
+        await onSelect(note.id)
+        await createBranch(bName.trim().toLowerCase())
+      } catch (err) {
+        alert(err.response?.data?.error || err.message || 'Failed to create branch')
+      }
     }
   }
 

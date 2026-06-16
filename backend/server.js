@@ -54,8 +54,12 @@ io.on('connection', (socket) => {
   })
 })
 
-// Start chokidar file watcher and stream updates to frontend
-startWatcher(io)
+const isVercel = process.env.VERCEL === '1' || !!process.env.VERCEL
+
+if (!isVercel) {
+  // Start chokidar file watcher and stream updates to frontend
+  startWatcher(io)
+}
 
 // Catch-all route to serve Vite index.html in production
 app.get('*', (req, res, next) => {
@@ -67,6 +71,10 @@ app.get('*', (req, res, next) => {
   })
 })
 
-server.listen(PORT, () => {
-  console.log(`NoteGit Express server is listening on port ${PORT}`)
-})
+if (!isVercel) {
+  server.listen(PORT, () => {
+    console.log(`NoteGit Express server is listening on port ${PORT}`)
+  })
+}
+
+export default app

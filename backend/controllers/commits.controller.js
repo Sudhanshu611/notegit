@@ -20,7 +20,7 @@ export async function getNoteState(noteId) {
     oldestFirst.forEach(c => {
       list.push(c.hash, c.message, c.content, c.parent)
       array.prepend(c)
-      branchGraph.addCommit(c.hash, c.message, c.parent ? [c.parent] : [])
+      branchGraph.addCommit(c.hash, c.message, c.parents || (c.parent ? [c.parent] : []))
     })
 
     // Load branches into graph
@@ -67,17 +67,23 @@ export async function createCommit(req, res) {
     const currentBranchName = meta.currentBranch ?? 'main'
     const parentHash = branchGraph.branches.get(currentBranchName) ?? null
 
+    const parents = parentHash ? [parentHash] : []
+    if (meta && meta.pendingMerge && meta.pendingMerge.sourceHash) {
+      parents.push(meta.pendingMerge.sourceHash)
+    }
+
     const commit = {
       hash,
       message: message || `Update at ${new Date().toLocaleTimeString()}`,
       content,
       parent: parentHash,
+      parents,
       timestamp: Date.now()
     }
 
     list.push(hash, commit.message, content, parentHash)
     array.prepend(commit)
-    branchGraph.addCommit(hash, commit.message, parentHash ? [parentHash] : [])
+    branchGraph.addCommit(hash, commit.message, parents)
     
     // Set active branch pointer to new commit
     branchGraph.branches.set(currentBranchName, hash)
@@ -156,6 +162,9 @@ export async function restoreCommit(req, res) {
 
     meta.branches = meta.branches ?? {}
     meta.branches[currentBranchName] = hash
+    if (meta.pendingMerge) {
+      delete meta.pendingMerge
+    }
     await StorageEngine.saveNoteMeta(id, meta)
 
     res.json({ content, restoredHash: hash })

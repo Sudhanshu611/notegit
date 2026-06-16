@@ -48,34 +48,29 @@ export default function AppShell() {
     socket.on('note:changed', async (data) => {
       const currentActiveId = useNoteGitStore.getState().activeNoteId
       if (data.noteId === currentActiveId) {
-        const store = useNoteGitStore.getState()
-        if (store.hasUnsavedChanges) {
-          // Sync metadata only to protect unsaved editing content
-          try {
-            const metaRes = await client.get(`/notes/${currentActiveId}`)
-            const meta = metaRes.data
-            const commitsRes = await client.get(`/commits/${currentActiveId}`)
-            const { commits, dsa } = commitsRes.data
-            const branchesRes = await client.get(`/branches/${currentActiveId}`)
-            const { branches, activeBranch } = branchesRes.data
+        // Sync metadata only to protect unsaved/merging editing content in the active editor
+        try {
+          const metaRes = await client.get(`/notes/${currentActiveId}`)
+          const meta = metaRes.data
+          const commitsRes = await client.get(`/commits/${currentActiveId}`)
+          const { commits, dsa } = commitsRes.data
+          const branchesRes = await client.get(`/branches/${currentActiveId}`)
+          const { branches, activeBranch } = branchesRes.data
 
-            useNoteGitStore.setState(s => ({
-              noteTitle: meta.title,
-              activeBranch,
-              branches,
-              commits,
-              dsaState: {
-                ...s.dsaState,
-                linkedList: dsa.linkedList,
-                array: dsa.array,
-                graph: dsa.graph
-              }
-            }))
-          } catch (err) {
-            console.error('Failed to sync active note metadata:', err)
-          }
-        } else {
-          selectNote(currentActiveId)
+          useNoteGitStore.setState(s => ({
+            noteTitle: meta.title,
+            activeBranch,
+            branches,
+            commits,
+            dsaState: {
+              ...s.dsaState,
+              linkedList: dsa.linkedList,
+              array: dsa.array,
+              graph: dsa.graph
+            }
+          }))
+        } catch (err) {
+          console.error('Failed to sync active note metadata:', err)
         }
       } else {
         fetchNotes()

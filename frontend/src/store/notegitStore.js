@@ -113,9 +113,13 @@ export const useNoteGitStore = create((set, get) => ({
       const branchesRes = await client.get(`/branches/${noteId}`)
       const { branches, activeBranch } = branchesRes.data
 
-      // Retrieve current HEAD content if available
+      // Retrieve current HEAD content or conflict content if available
       let content = ''
-      if (commits && commits.length > 0) {
+      let hasUnsavedChanges = false
+      if (meta.pendingMerge && meta.pendingMerge.targetBranch === activeBranch && meta.pendingMerge.conflictContent) {
+        content = meta.pendingMerge.conflictContent
+        hasUnsavedChanges = true
+      } else if (commits && commits.length > 0) {
         // Fetch commit details for head hash
         const headHash = meta.branches[activeBranch]
         if (headHash) {
@@ -132,7 +136,7 @@ export const useNoteGitStore = create((set, get) => ({
         activeNoteId: noteId,
         noteTitle: meta.title,
         noteContent: content,
-        hasUnsavedChanges: false,
+        hasUnsavedChanges: hasUnsavedChanges,
         activeBranch,
         branches,
         commits,
@@ -328,6 +332,7 @@ export const useNoteGitStore = create((set, get) => ({
       }))
     } catch (err) {
       console.error('Failed to create branch:', err)
+      throw err
     }
   },
 
@@ -337,10 +342,15 @@ export const useNoteGitStore = create((set, get) => ({
     try {
       const res = await client.post(`/branches/${noteId}/switch`, { name })
       const { content, headHash, dsa } = res.data
+
+      const metaRes = await client.get(`/notes/${noteId}`)
+      const meta = metaRes.data
+      const isPendingMergeOnBranch = !!(meta.pendingMerge && meta.pendingMerge.targetBranch === name)
+
       set(s => ({
         activeBranch: name,
         noteContent: content,
-        hasUnsavedChanges: false,
+        hasUnsavedChanges: isPendingMergeOnBranch,
         dsaState: {
           ...s.dsaState,
           graph: dsa.graph

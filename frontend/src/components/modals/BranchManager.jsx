@@ -14,13 +14,20 @@ export default function BranchManager({ isOpen, onClose }) {
 
   const [searchQuery, setSearchQuery] = useState('')
   const [mergeSelectOpen, setMergeSelectOpen] = useState(false)
+  const [isCreating, setIsCreating] = useState(false)
+  const [newBranchName, setNewBranchName] = useState('')
 
   if (!isOpen || !activeNoteId) return null
 
   const handleCreateBranch = async () => {
-    const name = prompt('Enter new branch name (lowercase, kebab-case):')
-    if (name && name.trim()) {
-      await createBranch(name.trim().toLowerCase())
+    const name = newBranchName.trim()
+    if (!name) return
+    try {
+      await createBranch(name.toLowerCase())
+      setNewBranchName('')
+      setIsCreating(false)
+    } catch (err) {
+      alert(err.response?.data?.error || err.message || 'Failed to create branch')
     }
   }
 
@@ -151,46 +158,83 @@ export default function BranchManager({ isOpen, onClose }) {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Merge branches action */}
-            <div className="relative">
-              <button 
-                onClick={() => setMergeSelectOpen(!mergeSelectOpen)}
-                className="px-4 py-2 bg-transparent border border-border-low text-accent-blue rounded-sm text-[11px] font-mono font-bold uppercase tracking-wider hover:bg-bg-hover transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
-              >
-                <span className="material-symbols-outlined text-[14px]">merge</span>
-                Merge Branch
-              </button>
-              
-              {mergeSelectOpen && (
-                <div className="absolute bottom-full right-0 mb-2 w-48 bg-bg-card border border-border-low rounded shadow-xl py-1 z-[110] font-sans text-[11px]">
-                  <div className="px-3 py-1.5 text-text-muted font-caption-caps text-[9px] uppercase tracking-wider border-b border-border-low mb-1">
-                    Select source branch:
-                  </div>
-                  {branches.filter(b => b !== activeBranch).map(b => (
-                    <button
-                      key={b}
-                      onClick={() => handleMerge(b)}
-                      className="w-full text-left px-3 py-1.5 text-text-primary hover:bg-bg-hover font-mono truncate"
-                    >
-                      merge {b} → {activeBranch}
-                    </button>
-                  ))}
-                  {branches.length <= 1 && (
-                    <div className="px-3 py-2 text-text-muted italic">
-                      No other branches to merge.
+            {isCreating ? (
+              <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-2 duration-150">
+                <input
+                  type="text"
+                  value={newBranchName}
+                  onChange={(e) => setNewBranchName(e.target.value)}
+                  placeholder="new-branch-name"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleCreateBranch()
+                    if (e.key === 'Escape') {
+                      setIsCreating(false)
+                      setNewBranchName('')
+                    }
+                  }}
+                  autoFocus
+                  className="bg-bg-surface border border-border-low rounded px-2.5 py-1.5 text-[11px] font-mono text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent-green focus:border-accent-green transition-all w-36"
+                />
+                <button
+                  onClick={handleCreateBranch}
+                  className="px-3 py-1.5 bg-accent-green hover:brightness-110 text-on-primary font-mono text-[11px] font-bold uppercase tracking-wider rounded-sm transition-all cursor-pointer active:scale-95"
+                >
+                  Create
+                </button>
+                <button
+                  onClick={() => {
+                    setIsCreating(false)
+                    setNewBranchName('')
+                  }}
+                  className="px-3 py-1.5 bg-transparent border border-border-low text-text-secondary hover:text-text-primary font-mono text-[11px] font-bold uppercase tracking-wider rounded-sm transition-all cursor-pointer active:scale-95"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                {/* Merge branches action */}
+                <div className="relative">
+                  <button 
+                    onClick={() => setMergeSelectOpen(!mergeSelectOpen)}
+                    className="px-4 py-2 bg-transparent border border-border-low text-accent-blue rounded-sm text-[11px] font-mono font-bold uppercase tracking-wider hover:bg-bg-hover transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">merge</span>
+                    Merge Branch
+                  </button>
+                  
+                  {mergeSelectOpen && (
+                    <div className="absolute bottom-full right-0 mb-2 w-48 bg-bg-card border border-border-low rounded shadow-xl py-1 z-[110] font-sans text-[11px]">
+                      <div className="px-3 py-1.5 text-text-muted font-caption-caps text-[9px] uppercase tracking-wider border-b border-border-low mb-1">
+                        Select source branch:
+                      </div>
+                      {branches.filter(b => b !== activeBranch).map(b => (
+                        <button
+                          key={b}
+                          onClick={() => handleMerge(b)}
+                          className="w-full text-left px-3 py-1.5 text-text-primary hover:bg-bg-hover font-mono truncate"
+                        >
+                          merge {b} → {activeBranch}
+                        </button>
+                      ))}
+                      {branches.length <= 1 && (
+                        <div className="px-3 py-2 text-text-muted italic">
+                          No other branches to merge.
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              )}
-            </div>
 
-            <button 
-              onClick={handleCreateBranch}
-              className="px-4 py-2 bg-accent-green hover:brightness-110 text-on-primary font-mono text-[11px] font-bold uppercase tracking-wider rounded-sm transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
-            >
-              <span className="material-symbols-outlined text-[14px]">add</span>
-              New Branch
-            </button>
+                <button 
+                  onClick={() => setIsCreating(true)}
+                  className="px-4 py-2 bg-accent-green hover:brightness-110 text-on-primary font-mono text-[11px] font-bold uppercase tracking-wider rounded-sm transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  <span className="material-symbols-outlined text-[14px]">add</span>
+                  New Branch
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
