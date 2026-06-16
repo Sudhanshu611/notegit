@@ -33,6 +33,32 @@ const PORT = process.env.PORT || 3001
 app.use(cors({ origin: 'http://localhost:5173' }))
 app.use(express.json())
 
+// Diagnostic endpoints to inspect Vercel routing headers
+app.get('/api/debug', (req, res) => {
+  res.json({
+    url: req.url,
+    path: req.path,
+    originalUrl: req.originalUrl,
+    headers: req.headers,
+    env: {
+      VERCEL: process.env.VERCEL,
+      NODE_ENV: process.env.NODE_ENV
+    }
+  })
+})
+app.get('/debug', (req, res) => {
+  res.json({
+    url: req.url,
+    path: req.path,
+    originalUrl: req.originalUrl,
+    headers: req.headers,
+    env: {
+      VERCEL: process.env.VERCEL,
+      NODE_ENV: process.env.NODE_ENV
+    }
+  })
+})
+
 // Initialize local storage directory
 await StorageEngine.init()
 
