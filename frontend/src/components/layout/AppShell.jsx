@@ -33,56 +33,62 @@ export default function AppShell() {
     // Initial fetch of notes registry
     fetchNotes()
 
-    // Setup Socket.io client for real-time local file watcher sync
-    const socket = io('http://localhost:3001')
+    let socket = null
 
-    socket.on('connect', () => {
-      setSocketConnected(true)
-      console.log('Connected to NoteGit file watcher daemon')
-    })
+    if (!import.meta.env.PROD) {
+      // Setup Socket.io client for real-time local file watcher sync
+      socket = io('http://localhost:3001')
 
-    socket.on('disconnect', () => {
-      setSocketConnected(false)
-    })
+      socket.on('connect', () => {
+        setSocketConnected(true)
+        console.log('Connected to NoteGit file watcher daemon')
+      })
 
-    socket.on('note:changed', async (data) => {
-      const currentActiveId = useNoteGitStore.getState().activeNoteId
-      if (data.noteId === currentActiveId) {
-        // Sync metadata only to protect unsaved/merging editing content in the active editor
-        try {
-          const metaRes = await client.get(`/notes/${currentActiveId}`)
-          const meta = metaRes.data
-          const commitsRes = await client.get(`/commits/${currentActiveId}`)
-          const { commits, dsa } = commitsRes.data
-          const branchesRes = await client.get(`/branches/${currentActiveId}`)
-          const { branches, activeBranch } = branchesRes.data
+      socket.on('disconnect', () => {
+        setSocketConnected(false)
+      })
 
-          useNoteGitStore.setState(s => ({
-            noteTitle: meta.title,
-            activeBranch,
-            branches,
-            commits,
-            dsaState: {
-              ...s.dsaState,
-              linkedList: dsa.linkedList,
-              array: dsa.array,
-              graph: dsa.graph
-            }
-          }))
-        } catch (err) {
-          console.error('Failed to sync active note metadata:', err)
+      socket.on('note:changed', async (data) => {
+        const currentActiveId = useNoteGitStore.getState().activeNoteId
+        if (data.noteId === currentActiveId) {
+          // Sync metadata only to protect unsaved/merging editing content in the active editor
+          try {
+            const metaRes = await client.get(`/notes/${currentActiveId}`)
+            const meta = metaRes.data
+            const commitsRes = await client.get(`/commits/${currentActiveId}`)
+            const { commits, dsa } = commitsRes.data
+            const branchesRes = await client.get(`/branches/${currentActiveId}`)
+            const { branches, activeBranch } = branchesRes.data
+
+            useNoteGitStore.setState(s => ({
+              noteTitle: meta.title,
+              activeBranch,
+              branches,
+              commits,
+              dsaState: {
+                ...s.dsaState,
+                linkedList: dsa.linkedList,
+                array: dsa.array,
+                graph: dsa.graph
+              }
+            }))
+          } catch (err) {
+            console.error('Failed to sync active note metadata:', err)
+          }
+        } else {
+          fetchNotes()
         }
-      } else {
-        fetchNotes()
-      }
-    })
+      })
 
-    socket.on('index:changed', () => {
-      fetchNotes()
-    })
+      socket.on('index:changed', () => {
+        fetchNotes()
+      })
+    }
 
     return () => {
-      socket.disconnect()
+      if (socket) {
+        socket.disconnect()
+      }
     }
   }, [fetchNotes, selectNote])
 
