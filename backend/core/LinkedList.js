@@ -1,61 +1,91 @@
-// core/LinkedList.js
+import { runCpp, hexEncode, hexDecode } from './runnerHelper.js'
+
 export class CommitNode {
   constructor(hash, message, content, parentHash = null, timestamp = Date.now()) {
-    this.hash      = hash         // 7-char hex
+    this.hash      = hash
     this.message   = message
-    this.content   = content      // full note text at this commit
-    this.parent    = parentHash   // null for root commit
-    this.timestamp = timestamp
-    this.branch    = null         // set when node is on a named branch
+    this.content   = content
+    this.parent    = parentHash === 'null' ? null : parentHash
+    this.timestamp = Number(timestamp)
+    this.branch    = null
     this.next      = null
   }
 }
 
 export class CommitLinkedList {
   constructor() {
-    this.head = null   // most recent commit
+    this.state_str = 'EMPTY'
+    this.head = null
     this.size = 0
   }
 
-  // O(1) — prepend new commit
+  _sync() {
+    if (this.state_str === 'EMPTY' || !this.state_str) {
+      this.head = null
+      this.size = 0
+      return
+    }
+    const commits = this.state_str.split(';')
+    this.size = commits.length
+    
+    // The last commit in the string is the head (newest)
+    const headParts = commits[commits.length - 1].split(':')
+    if (headParts.length >= 5) {
+      this.head = new CommitNode(
+        headParts[0],
+        hexDecode(headParts[1]),
+        hexDecode(headParts[2]),
+        headParts[3],
+        headParts[4]
+      )
+    } else {
+      this.head = null
+    }
+  }
+
   push(hash, message, content, parentHash) {
-    const node = new CommitNode(hash, message, content, parentHash)
-    node.next  = this.head
-    this.head  = node
-    this.size++
-    return node
+    const parent = parentHash || 'null'
+    const { newState } = runCpp('list', 'push', this.state_str, [
+      hash,
+      hexEncode(message),
+      hexEncode(content),
+      parent
+    ])
+    this.state_str = newState
+    this._sync()
+    return this.head
   }
 
-  // O(n) — walk list to find a commit by hash
   findByHash(hash) {
-    let current = this.head
-    while (current) {
-      if (current.hash === hash) return current
-      current = current.next
-    }
-    return null
+    const { result } = runCpp('list', 'findByHash', this.state_str, [hash])
+    if (result === 'NULL' || !result) return null
+    const parts = result.split(':')
+    return new CommitNode(
+      parts[0],
+      hexDecode(parts[1]),
+      hexDecode(parts[2]),
+      parts[3],
+      parts[4]
+    )
   }
 
-  // O(n) — serialize to array for API responses and ArrayViz
   toArray() {
-    const result = []
-    let current  = this.head
-    while (current) {
-      result.push({
-        hash:      current.hash,
-        message:   current.message,
-        parent:    current.parent,
-        timestamp: current.timestamp
-      })
-      current = current.next
-    }
-    return result  // index 0 = HEAD
+    const { result } = runCpp('list', 'toArray', this.state_str)
+    if (!result) return []
+    const commits = result.split(';')
+    return commits.map(c => {
+      const parts = c.split(':')
+      return {
+        hash:      parts[0],
+        message:   hexDecode(parts[1]),
+        parent:    parts[2] === 'null' ? null : parts[2],
+        timestamp: Number(parts[3])
+      }
+    })
   }
 
-  // O(n) — restore note content to a specific commit
   restoreTo(hash) {
-    const node = this.findByHash(hash)
-    if (!node) throw new Error(`Commit ${hash} not found`)
-    return node.content
+    const { result } = runCpp('list', 'restoreTo', this.state_str, [hash])
+    return hexDecode(result)
   }
 }

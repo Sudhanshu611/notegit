@@ -35,3 +35,12 @@ stitch_file_to_ui_generator
 codegen_guide.md
 .vercel
 .env*
+
+# C++ Binaries & Demos
+cpp/runner
+cpp/runner.exe
+cpp/demo
+cpp/demo.exe
+
+# DSA Guide
+DSA_GUIDE.md

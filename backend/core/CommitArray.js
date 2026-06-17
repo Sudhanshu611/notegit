@@ -1,31 +1,72 @@
-// core/CommitArray.js
+import { runCpp, hexEncode, hexDecode } from './runnerHelper.js'
+
 export class CommitArray {
   constructor() {
-    this.items = []  // items[0] = HEAD (most recent)
-  }
-
-  prepend(commit) {
-    this.items.unshift(commit)  // new commit goes to index 0
-  }
-
-  getAtIndex(i) {
-    return this.items[i] ?? null
-  }
-
-  clear() {
+    this.state_str = 'EMPTY'
     this.items = []
   }
 
-  // Shape sent to ArrayViz — first 8 commits visible
-  getVisualizerState() {
+  _sync() {
+    if (this.state_str === 'EMPTY' || !this.state_str) {
+      this.items = []
+      return
+    }
+    const commits = this.state_str.split(';')
+    // State is stored oldest first, but array.items is newest first. So we reverse it!
+    this.items = commits.map(c => {
+      const parts = c.split(':')
+      return {
+        hash:    parts[0],
+        message: hexDecode(parts[1])
+      }
+    }).reverse()
+  }
+
+  prepend(commit) {
+    const { newState } = runCpp('array', 'prepend', this.state_str, [
+      commit.hash,
+      hexEncode(commit.message)
+    ])
+    this.state_str = newState
+    this._sync()
+  }
+
+  getAtIndex(i) {
+    const { result } = runCpp('array', 'getAtIndex', this.state_str, [i.toString()])
+    if (!result) return null
+    const parts = result.split(':')
     return {
-      commits:   this.items.slice(0, 8).map((c, i) => ({
-        index:   i,
-        hash:    c.hash,
-        message: c.message.slice(0, 24) + (c.message.length > 24 ? '…' : '')
-      })),
+      hash:    parts[0],
+      message: hexDecode(parts[1])
+    }
+  }
+
+  clear() {
+    this.state_str = 'EMPTY'
+    this.items = []
+  }
+
+  getVisualizerState() {
+    const { result } = runCpp('array', 'getVisualizerState', this.state_str)
+    if (!result) return { commits: [], headIndex: 0, total: 0 }
+    
+    const parts = result.split('|')
+    const total = Number(parts[1])
+    const commitsPart = parts[0]
+    
+    const commits = commitsPart ? commitsPart.split(';').map(c => {
+      const nodeParts = c.split('~')
+      return {
+        index:   Number(nodeParts[0]),
+        hash:    nodeParts[1],
+        message: hexDecode(nodeParts[2])
+      }
+    }) : []
+
+    return {
+      commits,
       headIndex: 0,
-      total:     this.items.length
+      total
     }
   }
 }

@@ -1,9 +1,27 @@
-// core/BranchGraph.js
+import { runCpp, hexEncode, hexDecode } from './runnerHelper.js'
+
 export class BranchGraph {
   constructor() {
     this.nodes    = new Map()   // hash → { hash, message, parents[], branches[], children[] }
     this.branches = new Map()   // branchName → headHash
     this.HEAD     = 'main'
+  }
+
+  _serializeState() {
+    const nodesList = [];
+    for (const [hash, node] of this.nodes.entries()) {
+      const parentsStr = (node.parents || []).join(',');
+      nodesList.push(`${hash}~${hexEncode(node.message)}~${parentsStr}`);
+    }
+    const nodesPart = nodesList.length > 0 ? nodesList.join(';') : 'EMPTY';
+
+    const branchesList = [];
+    for (const [bName, bHash] of this.branches.entries()) {
+      branchesList.push(`${bName}~${bHash || 'null'}`);
+    }
+    const branchesPart = branchesList.length > 0 ? branchesList.join(';') : 'EMPTY';
+
+    return `${nodesPart}|${branchesPart}|${this.HEAD}`;
   }
 
   addCommit(hash, message, parentHashes = []) {
@@ -42,55 +60,56 @@ export class BranchGraph {
 
   // Three-way merge: finds common ancestor, applies changes
   merge(sourceBranch, targetBranch = this.HEAD) {
-    const sourceHead = this.branches.get(sourceBranch)
-    const targetHead = this.branches.get(targetBranch)
-    const ancestor   = this._findCommonAncestor(sourceHead, targetHead)
-    return { sourceHead, targetHead, ancestor }
-  }
-
-  _findCommonAncestor(hashA, hashB) {
-    if (!hashA || !hashB) return null
-    const visitedA = new Set()
-    const queueA   = [hashA]
-    while (queueA.length) {
-      const h = queueA.shift()
-      if (!h) continue
-      visitedA.add(h)
-      const node = this.nodes.get(h)
-      if (node && node.parents) node.parents.forEach(p => queueA.push(p))
+    const state = this._serializeState()
+    const { result } = runCpp('graph', 'merge', state, [sourceBranch, targetBranch])
+    const parts = result.split('~')
+    return {
+      sourceHead: parts[0],
+      targetHead: parts[1],
+      ancestor:   parts[2] === 'null' ? null : parts[2]
     }
-    const queueB = [hashB]
-    while (queueB.length) {
-      const h = queueB.shift()
-      if (!h) continue
-      if (visitedA.has(h)) return h
-      const node = this.nodes.get(h)
-      if (node && node.parents) node.parents.forEach(p => queueB.push(p))
-    }
-    return null
   }
 
   // Shape sent to GraphViz
   getVisualizerState() {
-    const nodeList = Array.from(this.nodes.values()).map(n => ({
-      id:       n.hash,
-      label:    n.hash.slice(0, 7),
-      branches: n.branches || [],
-      parents:  n.parents || []
-    }))
+    const state = this._serializeState()
+    const { result } = runCpp('graph', 'getVisualizerState', state)
+    if (!result) return { nodes: [], edges: [], branches: {}, activeBranch: this.HEAD }
 
-    const edgeList = []
-    this.nodes.forEach(n => {
-      if (n.parents) {
-        n.parents.forEach(p => edgeList.push({ from: p, to: n.hash }))
+    const parts = result.split('|')
+    const nodesPart = parts[0]
+    const edgesPart = parts[1]
+    const branchesPart = parts[2]
+    const activeBranch = parts[3]
+
+    const nodes = nodesPart !== 'EMPTY' && nodesPart ? nodesPart.split(';').map(n => {
+      const nodeParts = n.split('~')
+      return {
+        id:       nodeParts[0],
+        label:    nodeParts[1],
+        branches: nodeParts[2] === 'none' ? [] : nodeParts[2].split(','),
+        parents:  nodeParts[3] === 'none' ? [] : nodeParts[3].split(',')
       }
-    })
+    }) : []
+
+    const edges = edgesPart !== 'EMPTY' && edgesPart ? edgesPart.split(';').map(e => {
+      const edgeParts = e.split('~')
+      return { from: edgeParts[0], to: edgeParts[1] }
+    }) : []
+
+    const branches = {}
+    if (branchesPart !== 'EMPTY' && branchesPart) {
+      branchesPart.split(';').forEach(b => {
+        const bParts = b.split('~')
+        branches[bParts[0]] = bParts[1] === 'null' ? null : bParts[1]
+      })
+    }
 
     return {
-      nodes:          nodeList,
-      edges:          edgeList,
-      branches:       Object.fromEntries(this.branches),
-      activeBranch:   this.HEAD
+      nodes,
+      edges,
+      branches,
+      activeBranch
     }
   }
 }

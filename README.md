@@ -108,7 +108,7 @@ Every time you create a note, make an edit, commit a snapshot, branch, merge, un
   commit 3       commit 2       commit 1
 ```
 
-**Implementation:** [`backend/core/LinkedList.js`](backend/core/LinkedList.js)
+**Implementation:** JavaScript Wrapper: [`backend/core/LinkedList.js`](backend/core/LinkedList.js) (delegates to C++) | C++ Core: [`cpp/dsa/CommitLinkedList.hpp`](cpp/dsa/CommitLinkedList.hpp)
 
 Each commit is a **node** in a singly linked list. When you commit, a new `CommitNode` is prepended at the head in **O(1)** time. Each node stores:
 - `hash` — 7-character hex identifier
@@ -143,7 +143,7 @@ Each commit is a **node** in a singly linked list. When you commit, a new `Commi
   └──────────┘
 ```
 
-**Implementation:** [`backend/core/Stack.js`](backend/core/Stack.js)
+**Implementation:** JavaScript Wrapper: [`backend/core/Stack.js`](backend/core/Stack.js) (delegates to C++) | C++ Core: [`cpp/dsa/Stack.hpp`](cpp/dsa/Stack.hpp)
 
 NoteGit uses two stacks — an **Undo Stack** and a **Redo Stack** — managed by the `UndoRedoManager` class:
 - **Every edit** pushes a content snapshot onto the Undo Stack and clears the Redo Stack
@@ -176,7 +176,7 @@ NoteGit uses two stacks — an **Undo Stack** and a **Redo Stack** — managed b
   Bucket 7: [ "Git Internals" ]
 ```
 
-**Implementation:** [`backend/core/HashMap.js`](backend/core/HashMap.js)
+**Implementation:** JavaScript Visualizer: [`frontend/src/store/notegitStore.js`](frontend/src/store/notegitStore.js) | C++ Core: [`cpp/dsa/HashMap.hpp`](cpp/dsa/HashMap.hpp)
 
 The note registry uses a custom **hash map with the djb2 hash function** and chaining for collision resolution:
 ```
@@ -210,7 +210,7 @@ Notes are stored in an array of 8 buckets. When you create a note, its title is 
         └────────┘ └────────┘ └────────┘ └────────┘
 ```
 
-**Implementation:** [`backend/core/CommitArray.js`](backend/core/CommitArray.js)
+**Implementation:** JavaScript Wrapper: [`backend/core/CommitArray.js`](backend/core/CommitArray.js) (delegates to C++) | C++ Core: [`cpp/dsa/CommitArray.hpp`](cpp/dsa/CommitArray.hpp)
 
 The `CommitArray` provides an **indexed, ordered view** of the commit history. While the linked list represents the logical parent-child chain, the array gives O(1) index-based access to commits. New commits are prepended at index 0, so `array[0]` is always the HEAD.
 
@@ -244,7 +244,7 @@ The `CommitArray` provides an **indexed, ordered view** of the commit history. W
                  └──────┘
 ```
 
-**Implementation:** [`backend/core/BranchGraph.js`](backend/core/BranchGraph.js)
+**Implementation:** JavaScript Wrapper: [`backend/core/BranchGraph.js`](backend/core/BranchGraph.js) (delegates to C++) | C++ Core: [`cpp/dsa/BranchGraph.hpp`](cpp/dsa/BranchGraph.hpp)
 
 The `BranchGraph` is a **Directed Acyclic Graph** where:
 - Each **node** is a commit with a list of parent hashes
@@ -397,12 +397,12 @@ notegit/
 │   │   ├── commits.controller.js
 │   │   ├── branches.controller.js
 │   │   └── ai.controller.js
-│   ├── core/                  # Custom DSA implementations
-│   │   ├── LinkedList.js      # Singly Linked List
-│   │   ├── Stack.js           # Stack + UndoRedoManager
-│   │   ├── HashMap.js         # Hash Map with djb2
-│   │   ├── CommitArray.js     # Indexed commit array
-│   │   └── BranchGraph.js     # DAG for branch visualization
+│   ├── core/                  # C++ backed DSA implementations
+│   │   ├── LinkedList.js      # Singly Linked List (C++ wrapped)
+│   │   ├── Stack.js           # Stack + UndoRedoManager (C++ wrapped)
+│   │   ├── CommitArray.js     # Indexed commit array (C++ wrapped)
+│   │   ├── BranchGraph.js     # DAG for branch visualization (C++ wrapped)
+│   │   └── runnerHelper.js    # C++ execution bridge
 │   ├── routes/
 │   │   ├── notes.routes.js
 │   │   ├── commits.routes.js
@@ -431,6 +431,18 @@ notegit/
 │   │   │   └── modals/        # DiffModal, BranchManager
 │   │   └── styles/            # Tailwind config + custom CSS
 │   └── package.json
+├── cpp/                       # C++ DSA implementations (underlying engine)
+│   ├── dsa/                   # Custom C++ DSA classes
+│   │   ├── CommitNode.hpp
+│   │   ├── CommitLinkedList.hpp
+│   │   ├── Stack.hpp
+│   │   ├── UndoRedoManager.hpp
+│   │   ├── HashMap.hpp
+│   │   ├── CommitArray.hpp
+│   │   └── BranchGraph.hpp
+│   ├── README.md              # C++ compilation & setup instructions
+│   ├── runner.cpp             # CLI State Transformer (backend bridge)
+│   └── main.cpp               # C++ demo suite runner
 ├── package.json               # Monorepo root (workspaces)
 ├── vercel.json                # Vercel deployment config
 └── README.md
